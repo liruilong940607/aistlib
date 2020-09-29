@@ -45,7 +45,7 @@ def get_video_name(video_name, view):
   return '_'.join(splits)
 
 
-def load_pkl(path):
+def load_pkl(path, keys=None, **kwargs):
   """Load AIST++ annotations from pkl file."""
   if '/cns/' in path:
     with gfile.Open(path, 'rb') as f:
@@ -59,10 +59,11 @@ def load_pkl(path):
   out = {}
 
   # smpl related
-  if 'smpl_loss' in data:
+  if 'smpl_loss' in data and ('smpl_loss' in keys if keys else True):
     # a single float
     out.update({'smpl_loss': data['smpl_loss']})
-  if 'smpl_joints' in annos[0]:
+
+  if 'smpl_joints' in annos[0] and ('smpl_joints' in keys if keys else True):
      # [nframes, 24, 3]
     out.update({
         'smpl_joints':
@@ -70,7 +71,7 @@ def load_pkl(path):
                 [anno['smpl_joints'] for anno in annos]
             )[:, :24, :].astype(np.float32)
     })
-  if 'smpl_pose' in annos[0]:
+  if 'smpl_pose' in annos[0] and ('smpl_poses' in keys if keys else True):
     # [nframes, 24, 3]
     out.update({
         'smpl_poses':
@@ -78,7 +79,7 @@ def load_pkl(path):
                 [anno['smpl_pose'] for anno in annos]
             ).reshape(-1, 24, 3).astype(np.float32)
     })
-  if 'smpl_shape' in annos[0]:
+  if 'smpl_shape' in annos[0] and ('smpl_shape' in keys if keys else True):
     # [nframes, 10]
     out.update({
         'smpl_shape':
@@ -86,7 +87,7 @@ def load_pkl(path):
                 [anno['smpl_shape'] for anno in annos]
             ).astype(np.float32)
     })
-  if 'scaling' in annos[0]:
+  if 'scaling' in annos[0] and ('smpl_scaling' in keys if keys else True):
     # [nframes, 1]
     out.update({
         'smpl_scaling':
@@ -94,7 +95,7 @@ def load_pkl(path):
                 [anno['scaling'] for anno in annos]
             ).astype(np.float32)
     })
-  if 'transl' in annos[0]:
+  if 'transl' in annos[0] and ('smpl_trans' in keys if keys else True):
     # [nframes, 3]
     out.update({
         'smpl_trans':
@@ -102,7 +103,7 @@ def load_pkl(path):
                 [anno['transl'] for anno in annos]
             ).astype(np.float32)
     })
-  if 'verts' in annos[0]:
+  if 'verts' in annos[0] and ('smpl_verts' in keys if keys else True):
     # [nframes, 6890, 3]
     out.update({
         'smpl_verts':
@@ -112,7 +113,7 @@ def load_pkl(path):
     })
 
   # 2D and 3D keypoints
-  if 'keypoints2d' in annos[0]:
+  if 'keypoints2d' in annos[0] and ('smpl_verts' in keys if keys else True):
     # [9, nframes, 17, 3]
     out.update({
         'keypoints2d':
@@ -120,7 +121,7 @@ def load_pkl(path):
                 [anno['keypoints2d'] for anno in annos], axis=1
             ).astype(np.float32)
     })
-  if 'keypoints3d' in annos[0]:
+  if 'keypoints3d' in annos[0] and ('keypoints3d' in keys if keys else True):
     # [nframes, 17, 3]
     out.update({
         'keypoints3d':
@@ -128,7 +129,7 @@ def load_pkl(path):
                 [anno['keypoints3d'] for anno in annos]
             ).astype(np.float32)
     })
-  if 'keypoints3d_optim' in annos[0]:
+  if 'keypoints3d_optim' in annos[0] and ('keypoints3d_optim' in keys if keys else True):
     # [nframes, 17, 3]
     out.update({
         'keypoints3d_optim':
@@ -138,7 +139,7 @@ def load_pkl(path):
     })
 
   # timestamps for each frame, in ms.
-  if 'timestamp' in annos[0]:
+  if 'timestamp' in annos[0] and ('timestamps' in keys if keys else True):
     # [nframes,]
     out.update({
         'timestamps':
@@ -148,7 +149,7 @@ def load_pkl(path):
     })
 
   # human detection score
-  if 'det_scores' in annos[0]:
+  if 'det_scores' in annos[0] and ('det_scores' in keys if keys else True):
     # [9, nframes]
     out.update({
         'det_scores':
@@ -160,10 +161,10 @@ def load_pkl(path):
   return out
 
 
-def load(path):
+def load(path, **kwargs):
   """Load AIST++ annotations."""
   if path[-4:] == '.pkl':
-    return load_pkl(path)
+    return load_pkl(path, **kwargs)
   else:
     assert False, f'{path} should be a pkl file'
 
