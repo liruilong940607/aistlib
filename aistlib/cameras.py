@@ -8,7 +8,7 @@ try:
     from google3.pyglib import gfile
     from cvx2 import latest as cv2
     GOOGLE3 = True
-else
+except:
     import cv2
     GOOGLE3 = False
 

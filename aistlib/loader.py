@@ -14,7 +14,7 @@ try:
     import google3
     from google3.pyglib import gfile
     GOOGLE3 = True
-else
+except:
     GOOGLE3 = False
 
 _LOG_FILE_JSON_EMPTY = 'json_empty_list.txt'
@@ -210,6 +210,7 @@ def load_keypoints_file_legacy(path, width=1.0, height=1.0, njoints=17):
     kpt = np.zeros((njoints, dim), dtype=np.float32)
   return kpt
 
+
 def load_keypoints_video_legacy(paths, width=1.0, height=1.0, njoints=17):
   """load keypoints for a video from xenomorph/openpose results.
   """
@@ -357,3 +358,4 @@ def load_keypoints2d(data_dir, video_name, views=None, log_dir=None):
   keypoints2d = np.array(keypoints2d, dtype=np.float32)
   det_scores = np.array(det_scores, dtype=np.float32)
   return keypoints2d, det_scores, timestamps
+
