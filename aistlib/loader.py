@@ -45,6 +45,24 @@ def get_video_name(video_name, view):
   return '_'.join(splits)
 
 
+def get_music_name(video_name):
+  """Get AIST music name for a specific video."""
+  splits = video_name.split('_')
+  return splits[-2]
+  
+
+def get_tempo(music_name):
+  """Get tempo (BPM) for a music by parsing music name."""
+  assert len(music_name) == 4
+  if music_name[0:3] in [
+    'mBR', 'mPO', 'mLO', 'mMH', 'mLH', 'mWA', 'mKR', 'mJS', 'mJB']:
+    return int(music_name[3]) * 10 + 80
+  elif music_name[0:3] == 'mHO':
+    return int(music_name[3]) * 5 + 110
+  else:
+    assert False, music_name
+    
+
 def load_pkl(path, keys=None, **kwargs):
   """Load AIST++ annotations from pkl file."""
   if '/cns/' in path:

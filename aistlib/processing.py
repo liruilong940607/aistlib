@@ -15,18 +15,18 @@ EPS = 1e-6
 # ===========================================================
 # Music Processing Fuctions
 # ===========================================================
-def music_features_all(path, concat=False):
+def music_features_all(path, tempo=120.0, concat=False):
     data = music_load(path)
     envelope = music_envelope(data=data)
 
     # tempogram = music_tempogram(envelope=envelope)
-    mfcc = music_mfcc(envelope=envelope)
-    chroma = music_chroma(envelope=envelope)
+    mfcc = music_mfcc(data=data)
+    chroma = music_chroma(data=data)
     _, peak_onehot = music_peak_onehot(envelope=envelope)
-    _, beat_onehot, _ = music_beat_onehot(envelope=envelope)
+    _, beat_onehot, _ = music_beat_onehot(envelope=envelope, start_bpm=tempo)
 
     features = OrderedDict({
-        'envelope': envelope,
+        'envelope': envelope[:, None],
         # 'tempogram': tempogram,
         'mfcc': mfcc,
         'chroma': chroma,

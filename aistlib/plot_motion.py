@@ -3,7 +3,7 @@ import shutil
 import numpy as np
 import matplotlib
 from mpl_toolkits.mplot3d import Axes3D
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 from matplotlib import pyplot as plt, animation as animation
 
 from . import ffmpeg
