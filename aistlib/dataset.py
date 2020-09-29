@@ -80,6 +80,11 @@ class AISTDataset(object):
 
     @classmethod
     def plot_joints(cls, joints, save_path=None):
+        out_dir, fname = None, None
+        if save_path:
+            out_dir = os.path.dirname(save_path)
+            fname = os.path.basename(save_path).split('.')[0]
+
         """Visualize 3D joints."""
         plot_motion.animate_matplotlib(
             positions=[joints],
@@ -87,7 +92,9 @@ class AISTDataset(object):
             titles=[''],
             fig_title='smpl_joints',
             fps=60,
-            figsize=(5.0, 5.0)
+            figsize=(5.0, 5.0),
+            out_dir=out_dir,
+            fname=fname,
         )
     
     @classmethod
