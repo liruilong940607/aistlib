@@ -40,12 +40,12 @@ def get_testval_music_id(video_name):
 
 def get_split(video_names, task, subset, **kwargs):
   assert task in ['generation', 'prediction']
-  assert subset in ['train', 'val', 'test']
+  assert subset in ['train', 'val', 'test', 'all']
 
   split = {
       'video_names': [],
       'music_names': [],
-      'rng_seed': kwargs['rng_seed'] if 'rng_seed' in kwargs else None,
+      'rng_seed': 58 if subset == 'test' else 42,
       'seq_seed_len': kwargs['seq_seed_len'] if 'seq_seed_len' in kwargs else None,
       'is_paired': kwargs['is_paired'] if 'is_paired' in kwargs else None,
   }

@@ -26,7 +26,8 @@ class AISTDataset(object):
             self.video_names = [name for name in self.video_names 
                                 if name not in ignore_video_names]
         self.video_names = sorted(self.video_names)
-
+        self.fk_engine = fk.SMPLForwardKinematics()
+        
     def __len__(self):
         return len(self.video_names)
 
@@ -34,7 +35,7 @@ class AISTDataset(object):
         video_name = self.video_names[index]
         return self.get_item(video_name)
 
-    def get_item(self, video_name, verbose=False):
+    def get_item(self, video_name, only_motion=False, verbose=False):
         music_name = loader.get_music_name(video_name)
         music_tempo = loader.get_tempo(music_name)
 
@@ -43,14 +44,22 @@ class AISTDataset(object):
         
         motion_data = loader.load_pkl(
             motion_path, 
-            keys=['smpl_joints', 'smpl_poses', 'smpl_scaling', 'smpl_trans'])
-        motion_data['smpl_trans'] /= motion_data['smpl_scaling']
+            keys=['smpl_poses', 'smpl_scaling', 'smpl_trans'])
+        motion_data['smpl_trans'] /= motion_data['smpl_scaling'] 
         del motion_data['smpl_scaling']
-        # interpolate 30 FPS motion data into 60 FPS
-        for k, v in motion_data.items():
+
+        motion_data['smpl_joints'] = self.fk_engine.from_aa(
+            motion_data['smpl_poses'], motion_data['smpl_trans'])
+        
+        for k, v in motion_data.items(): 
+            # interpolate 30 FPS motion data into 60 FPS
             motion_data[k] = processing.interp_motion(v)
 
-        music_data = processing.music_features_all(music_path, tempo=music_tempo)
+        if only_motion: # save time
+            music_data = None
+        else:
+            music_data = processing.music_features_all(
+                music_path, tempo=music_tempo)
         
         if verbose:
             print (f'---- {video_name} ----')
@@ -59,7 +68,15 @@ class AISTDataset(object):
             for k, v in music_data.items():
                 print (f'[music] {k}: {v.shape}')
         
-        return motion_data, music_data
+        return {
+            'video_name': video_name,
+            'music_name': music_name,
+            'motion_path': motion_path,
+            'music_path': music_path,
+            'motion_data': motion_data,
+            'music_data': music_data,
+            'music_tempo': music_tempo,
+        }
 
     @classmethod
     def plot_music(cls, music_data, save_path=None):
@@ -80,12 +97,11 @@ class AISTDataset(object):
 
     @classmethod
     def plot_joints(cls, joints, save_path=None):
+        """Visualize 3D joints."""
         out_dir, fname = None, None
         if save_path:
             out_dir = os.path.dirname(save_path)
             fname = os.path.basename(save_path).split('.')[0]
-
-        """Visualize 3D joints."""
         plot_motion.animate_matplotlib(
             positions=[joints],
             colors=['r'],

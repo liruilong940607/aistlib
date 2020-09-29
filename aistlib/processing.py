@@ -1,4 +1,6 @@
 from collections import OrderedDict
+import pickle
+import os
 
 import librosa
 import numpy as np
@@ -10,29 +12,39 @@ FPS = 60
 HOP_LENGTH = 512
 SR = FPS * HOP_LENGTH
 EPS = 1e-6
-
+CACHE_DIR = '/home/rui/local/data/AIST++/music_features/'
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 # ===========================================================
 # Music Processing Fuctions
 # ===========================================================
 def music_features_all(path, tempo=120.0, concat=False):
-    data = music_load(path)
-    envelope = music_envelope(data=data)
+    cache_path = os.path.join(
+        CACHE_DIR, os.path.basename(path).replace('.wav', '.pkl'))
+    if os.path.exists(cache_path):
+        with open(cache_path, 'rb') as f:
+            features = pickle.load(f)
+    else:
+        data = music_load(path)
+        envelope = music_envelope(data=data)
 
-    # tempogram = music_tempogram(envelope=envelope)
-    mfcc = music_mfcc(data=data)
-    chroma = music_chroma(data=data)
-    _, peak_onehot = music_peak_onehot(envelope=envelope)
-    _, beat_onehot, _ = music_beat_onehot(envelope=envelope, start_bpm=tempo)
+        # tempogram = music_tempogram(envelope=envelope)
+        mfcc = music_mfcc(data=data)
+        chroma = music_chroma(data=data)
+        _, peak_onehot = music_peak_onehot(envelope=envelope)
+        _, beat_onehot, _ = music_beat_onehot(envelope=envelope, start_bpm=tempo)
 
-    features = OrderedDict({
-        'envelope': envelope[:, None],
-        # 'tempogram': tempogram,
-        'mfcc': mfcc,
-        'chroma': chroma,
-        'peak_onehot': peak_onehot,
-        'beat_onehot': beat_onehot,
-    })
+        features = OrderedDict({
+            'envelope': envelope[:, None],
+            # 'tempogram': tempogram,
+            'mfcc': mfcc,
+            'chroma': chroma,
+            'peak_onehot': peak_onehot,
+            'beat_onehot': beat_onehot,
+        })
+        with open(cache_path, 'wb') as f:
+            pickle.dump(features, f, protocol=pickle.HIGHEST_PROTOCOL)
+
     if concat:
         return np.concatenate([v for k, v in features.items()], axis=1)
     else:
@@ -49,7 +61,7 @@ def music_envelope(path=None, data=None):
     """Calculate raw music envelope."""
     assert (path is not None) or (data is not None)
     if data is None:
-        data = music_load(path, sr=SR)
+        data = music_load(path)
     envelope = librosa.onset.onset_strength(data, sr=SR)
     return envelope # (seq_len,)
 
@@ -69,7 +81,7 @@ def music_mfcc(path=None, data=None, m_mfcc=20):
     """Calculate music feature: mfcc."""
     assert (path is not None) or (data is not None)
     if data is None:
-        data = music_load(path, sr=SR)
+        data = music_load(path)
     mfcc = librosa.feature.mfcc(data, sr=SR, n_mfcc=m_mfcc)
     return mfcc.T  # (seq_len, 20)
 
@@ -78,7 +90,7 @@ def music_chroma(path=None, data=None, n_chroma=12):
     """Calculate music feature: chroma."""
     assert (path is not None) or (data is not None)
     if data is None:
-        data = music_load(path, sr=SR)
+        data = music_load(path)
     chroma = librosa.feature.chroma_cens(
         data, sr=SR, hop_length=HOP_LENGTH, n_chroma=n_chroma)
     return chroma.T  # (seq_len, 12)
@@ -220,7 +232,7 @@ def alignment_score(music_beats, motion_beats, sigma=3):
 
 
 def calculate_metrics(
-    music_paths, joints_list, bpm_list, tol=6, start_id=0, verbose=False):
+    music_paths, joints_list, bpm_list, tol=12, sigma=3, start_id=0, verbose=False):
     """Calculate metrics for (motion, music) pair"""
     assert len(music_paths) == len(joints_list)
     
@@ -237,14 +249,18 @@ def calculate_metrics(
 
         # extract beats
         # music_envelope, music_beats, tempo = music_beat_onehot(music_path, start_bpm=bpm)
-        music_envelope, music_beats = music_peak_onehot(music_path)
+        # music_envelope, music_beats = music_peak_onehot(music_path)
+        music_features = music_features_all(music_path, tempo=bpm)
+        music_envelope, music_beats = music_features['envelope'], music_features['beat_onehot']
         motion_envelope, motion_beats, motion_beats_energy = motion_peak_onehot(joints)
         
-        music_envelope = music_envelope[start_id:]
-        music_beats = music_beats[start_id:]
-        motion_envelope = motion_envelope[start_id:]
-        motion_beats = motion_beats[start_id:]
-        motion_beats_energy = motion_beats_energy[start_id:]
+        end_id = min(motion_envelope.shape[0], music_envelope.shape[0])
+
+        music_envelope = music_envelope[start_id:end_id]
+        music_beats = music_beats[start_id:end_id]
+        motion_envelope = motion_envelope[start_id:end_id]
+        motion_beats = motion_beats[start_id:end_id]
+        motion_beats_energy = motion_beats_energy[start_id:end_id]
         
         # alignment
         music_beats_aligned, motion_beats_aligned = select_aligned(
@@ -256,7 +272,7 @@ def calculate_metrics(
         metrics['beat_hit'].append(
             len(motion_beats_aligned) / (motion_beats.sum() + EPS))
         metrics['beat_alignment'].append(
-            alignment_score(music_beats, motion_beats, sigma=3))
+            alignment_score(music_beats, motion_beats, sigma=sigma))
         metrics['beat_energy'].append(
             motion_beats_energy[motion_beats].mean() if motion_beats.sum() > 0 else 0.0)
         metrics['motion_energy'].append(
@@ -265,7 +281,7 @@ def calculate_metrics(
     for k, v in metrics.items():
         metrics[k] = sum(v) / len(v)
         if verbose:
-            print (f'{k}: {v:.3f}')
+            print (f'{k}: {metrics[k]:.3f}')
     return metrics
 
 
